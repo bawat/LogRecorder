@@ -11,6 +11,17 @@ plugins {
     id 'java-library'
 }
 
+jar{
+    manifest{
+        attributes 'Main-Class': 'LogRecorder.Application'
+    }
+	from{
+	    configurations.runtimeClasspath.collect{
+	        it.isDirectory()? it: zipTree(it)
+	    }
+	}
+}
+
 repositories {
     // Use jcenter for resolving dependencies.
     // You can declare any Maven/Ivy/file repository here.
@@ -24,6 +35,11 @@ dependencies {
     // This dependency is used internally, and not exposed to consumers on their own compile classpath.
     implementation 'com.google.guava:guava:28.0-jre'
     implementation group: 'org.jdesktop', name: 'beansbinding', version: '1.2.1'
+    implementation 'org.projectlombok:lombok:1.18.16'
+    implementation group: 'com.inet.jortho', name: 'jortho', version: '1.0'
+    implementation group: 'net.sourceforge.bpmn', name: 'yaoqiang-bpmn-editor', version: '2.2.18'
+    
+    annotationProcessor 'org.projectlombok:lombok:1.18.16'
 
     // Use JUnit test framework
     testImplementation 'junit:junit:4.12'

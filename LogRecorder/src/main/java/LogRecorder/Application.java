@@ -3,14 +3,25 @@ package LogRecorder;
 import java.awt.BorderLayout;
 import java.awt.EventQueue;
 import java.awt.Font;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.IOException;
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
+import java.nio.file.StandardWatchEventKinds;
+import java.nio.file.WatchEvent;
+import java.nio.file.WatchKey;
+import java.nio.file.WatchService;
+import java.util.Optional;
 
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
@@ -19,6 +30,8 @@ import javax.swing.SwingConstants;
 
 import com.inet.jortho.FileUserDictionary;
 import com.inet.jortho.SpellChecker;
+
+import lombok.SneakyThrows;
 
 public class Application
 {
@@ -89,10 +102,6 @@ public class Application
         panel_2.add(panel, BorderLayout.SOUTH);
         panel.setLayout(new BorderLayout(0, 0));
         
-        JButton btnNewButton = new JButton("Start Work");
-        btnNewButton.setHorizontalAlignment(SwingConstants.LEFT);
-        panel.add(btnNewButton, BorderLayout.EAST);
-        
         JLabel lblNewLabel = new JLabel("What will you be working on today?");
         lblNewLabel.setFont(new Font("Tahoma", Font.PLAIN, 16));
         lblNewLabel.setHorizontalAlignment(SwingConstants.CENTER);
@@ -104,13 +113,30 @@ public class Application
         splitPane.setResizeWeight(1);
         splitPane.setDividerLocation(175);
         
-        JTextPane topPane = new JTextPane();
-        SpellChecker.register(topPane);
-        splitPane.setRightComponent(topPane);
+        SpellCheckedPane topPane = new SpellCheckedPane();
+        topPane.setEditable(false);
+        JScrollPane topPaneScroll = new JScrollPane(topPane);
+        splitPane.setLeftComponent(topPaneScroll);
         
-        JTextPane bottomPane = new JTextPane();
-        SpellChecker.register(bottomPane);
-        splitPane.setLeftComponent(bottomPane);
+        Optional<String> fileContents = LogFile.maybeProvidePreviousFile();
+        topPane.setText("If you had a log for a previous day, you would see it here to review.");
+        if(fileContents.isPresent()) {
+        	topPane.setText(fileContents.get());
+        }
+        
+        SpellCheckedPane bottomPane = new SpellCheckedPane();
+        splitPane.setRightComponent(bottomPane);
+        
+        JButton btnNewButton = new JButton("Start Work");
+        btnNewButton.setHorizontalAlignment(SwingConstants.LEFT);
+        panel.add(btnNewButton, BorderLayout.EAST);
+        btnNewButton.addMouseListener(new MouseAdapter() {
+        	@Override
+        	public void mouseClicked(MouseEvent e) {
+        		appendLineIntoLog(bottomPane);
+        		tabbedPane.setSelectedIndex(1);
+        	}
+        });
     }
     
     private void endTab(JTabbedPane tabbedPane)
@@ -119,7 +145,7 @@ public class Application
         tabbedPane.addTab("Finished", null, panel_2, null);
         panel_2.setLayout(new BorderLayout(0, 0));
         
-        JTextPane textPane = new JTextPane();
+        SpellCheckedPane textPane = new SpellCheckedPane();
         panel_2.add(textPane, BorderLayout.CENTER);
         
         JPanel panel = new JPanel();
@@ -136,6 +162,7 @@ public class Application
         panel.add(lblNewLabel, BorderLayout.CENTER);
     }
 
+    @SneakyThrows
     private void notesTab(JTabbedPane tabbedPane)
     {
         JPanel panel_2 = new JPanel();
@@ -164,17 +191,29 @@ public class Application
         splitPane.setResizeWeight(1);
         splitPane.setDividerLocation(175);
         
-        JTextPane topPane = new JTextPane();
-        splitPane.setLeftComponent(topPane);
+        SpellCheckedPane topPane = new SpellCheckedPane();
+        JScrollPane topPaneScroll = new JScrollPane(topPane);
+        splitPane.setLeftComponent(topPaneScroll);
         
+        Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+        	@Override
+        	public void run() {
+        		LogFile.overwrite(topPane.getText());
+        	}
+        }));
+        
+        
+        topPane.setText(LogFile.getContents());
         new Thread(new Runnable() {
+        	
+        	WatchService watchService = FileSystems.getDefault().newWatchService();
 
             @Override
             public void run()
             {
-                Path dir = LogFile.TodaysURI.provide();
+                Path dir = LogFile.TodaysURI.provide().getParent();
                 try {
-                    WatchKey key = dir.register(watcher, ENTRY_MODIFY);
+                    dir.register(watchService, StandardWatchEventKinds.ENTRY_MODIFY);
                 } catch (IOException x) {
                     System.err.println(x);
                 }
@@ -187,7 +226,7 @@ public class Application
                     // wait for key to be signaled
                     WatchKey key;
                     try {
-                        key = watcher.take();
+                        key = watchService.take();
                     } catch (InterruptedException x) {
                         return;
                     }
@@ -195,41 +234,10 @@ public class Application
                     for (WatchEvent<?> event: key.pollEvents()) {
                         WatchEvent.Kind<?> kind = event.kind();
 
-                        // This key is registered only
-                        // for ENTRY_CREATE events,
-                        // but an OVERFLOW event can
-                        // occur regardless if events
-                        // are lost or discarded.
-                        if (kind == OVERFLOW) {
-                            continue;
-                        }
+                        if (kind != StandardWatchEventKinds.ENTRY_MODIFY) continue;
 
-                        // The filename is the
-                        // context of the event.
-                        WatchEvent<Path> ev = (WatchEvent<Path>)event;
-                        Path filename = ev.context();
-
-                        // Verify that the new
-                        //  file is a text file.
-                        try {
-                            // Resolve the filename against the directory.
-                            // If the filename is "test" and the directory is "foo",
-                            // the resolved name is "test/foo".
-                            Path child = dir.resolve(filename);
-                            if (!Files.probeContentType(child).equals("text/plain")) {
-                                System.err.format("New file '%s'" +
-                                    " is not a plain text file.%n", filename);
-                                continue;
-                            }
-                        } catch (IOException x) {
-                            System.err.println(x);
-                            continue;
-                        }
-
-                        // Email the file to the
-                        //  specified email alias.
-                        System.out.format("Emailing file %s%n", filename);
-                        //Details left to reader....
+                        System.out.println("Loaded from file after detecting change");
+                        topPane.setText(LogFile.getContents());
                     }
                     keyIsValid = key.reset();
                 }
@@ -237,19 +245,23 @@ public class Application
             
         }).start();
         
-        JTextPane bottomPane = new JTextPane();
+        SpellCheckedPane bottomPane = new SpellCheckedPane();
         splitPane.setRightComponent(bottomPane);
         
         btnNewButton.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent arg0) {
-                String note = bottomPane.getText();
-                if(note.isEmpty()) return;
-                LogFile.append(note + System.lineSeparator());
-                bottomPane.setText("");
-                topPane.setText(LogFile.getContents());
+            	LogFile.overwrite(topPane.getText());
+            	appendLineIntoLog(bottomPane);
             }
         });
+    }
+    
+    private void appendLineIntoLog(SpellCheckedPane submitBox) {
+    	String note = submitBox.getText();
+        if(note.isEmpty()) return;
+        LogFile.append(note);
+        submitBox.setText("");
     }
     
     private void toDoList(JTabbedPane tabbedPane)

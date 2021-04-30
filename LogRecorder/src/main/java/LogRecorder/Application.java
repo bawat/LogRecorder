@@ -8,6 +8,7 @@ import java.awt.event.FocusEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.StandardWatchEventKinds;
@@ -16,6 +17,8 @@ import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.util.Optional;
 
+import javax.swing.GroupLayout;
+import javax.swing.GroupLayout.Alignment;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -26,7 +29,11 @@ import javax.swing.JSplitPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
 import javax.swing.JTextPane;
+import javax.swing.LayoutStyle.ComponentPlacement;
 import javax.swing.SwingConstants;
+
+import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.Constructor;
 
 import com.inet.jortho.FileUserDictionary;
 import com.inet.jortho.SpellChecker;
@@ -38,12 +45,14 @@ public class Application
 
     private JFrame frame;
     private JTextField textField;
+    private YamlFile yamlFile;
 
     /**
      * Launch the application.
      */
     public static void main(String[] args)
-    {
+    {;
+        
         EventQueue.invokeLater(new Runnable() {
             public void run()
             {
@@ -77,6 +86,7 @@ public class Application
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.getContentPane().setLayout(new BorderLayout(0, 0));
         
+    	yamlFile = YamlFile.load();
         
         SpellChecker.setUserDictionaryProvider(new FileUserDictionary());
         SpellChecker.registerDictionaries(Thread.currentThread().getContextClassLoader().getResource("/resources"), "en");
@@ -84,11 +94,61 @@ public class Application
         JTabbedPane tabbedPane = new JTabbedPane(JTabbedPane.TOP);
         frame.getContentPane().add(tabbedPane);
         
+        setupTab(tabbedPane);
         startTab(tabbedPane);
         notesTab(tabbedPane);
         toDoList(tabbedPane);
         endTab(tabbedPane);
         
+    }
+
+    private void setupTab(JTabbedPane tabbedPane)
+    {
+        
+        JPanel panel_2 = new JPanel();
+        tabbedPane.addTab("Setup", null, panel_2, null);
+        
+        JButton btnLogLocation = new JButton("Choose Log Location");
+        
+        JButton btnLogBackupLocation = new JButton("Choose Log Backup Location");
+        
+        JTextField txtLogLocation = new JTextField(yamlFile.getLogFolder());
+        txtLogLocation.setColumns(10);
+        
+        JTextField txtLogBackupLocation = new JTextField(yamlFile.getLogFolderBackup());
+        txtLogBackupLocation.setColumns(10);
+        
+        
+        GroupLayout gl_panel_2 = new GroupLayout(panel_2);
+        gl_panel_2.setHorizontalGroup(
+            gl_panel_2.createParallelGroup(Alignment.LEADING)
+                .addGroup(gl_panel_2.createSequentialGroup()
+                    .addContainerGap()
+                    .addGroup(gl_panel_2.createParallelGroup(Alignment.LEADING)
+                        .addGroup(gl_panel_2.createSequentialGroup()
+                            .addComponent(btnLogLocation)
+                            .addPreferredGap(ComponentPlacement.UNRELATED)
+                            .addComponent(txtLogLocation, GroupLayout.DEFAULT_SIZE, 310, Short.MAX_VALUE))
+                        .addGroup(gl_panel_2.createSequentialGroup()
+                            .addComponent(btnLogBackupLocation)
+                            .addPreferredGap(ComponentPlacement.UNRELATED)
+                            .addComponent(txtLogBackupLocation, GroupLayout.DEFAULT_SIZE, 310, Short.MAX_VALUE)))
+                    .addContainerGap())
+        );
+        gl_panel_2.setVerticalGroup(
+            gl_panel_2.createParallelGroup(Alignment.LEADING)
+                .addGroup(gl_panel_2.createSequentialGroup()
+                    .addContainerGap()
+                    .addGroup(gl_panel_2.createParallelGroup(Alignment.BASELINE)
+                        .addComponent(btnLogLocation)
+                        .addComponent(txtLogLocation, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
+                    .addPreferredGap(ComponentPlacement.RELATED)
+                    .addGroup(gl_panel_2.createParallelGroup(Alignment.BASELINE)
+                        .addComponent(btnLogBackupLocation)
+                        .addComponent(txtLogBackupLocation, GroupLayout.PREFERRED_SIZE, 22, GroupLayout.PREFERRED_SIZE))
+                    .addGap(170))
+        );
+        panel_2.setLayout(gl_panel_2);
     }
 
     private void startTab(JTabbedPane tabbedPane)

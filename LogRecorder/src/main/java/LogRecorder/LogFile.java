@@ -9,18 +9,24 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import lombok.SneakyThrows;
 import lombok.experimental.ExtensionMethod;
 
 import LogRecorder.LogFile.ExtendString;
 
-@ExtensionMethod({java.lang.String.class, ExtendString.class})
+@ExtensionMethod({java.util.Arrays.class, ExtendString.class})
 public class LogFile {
     
 	public static class ExtendString {
-		public static String removeLeadingNewLines(String in) {
-			return in.replace("(.*?)[a-zA-Z0-9_]", "");
+		public static String trimBeginning(String in) {
+			Matcher matcher = Pattern.compile("^([^a-zA-Z0-9_]*).*").matcher(in);
+			if(!matcher.lookingAt() || matcher.groupCount() < 1)
+				return in;
+			
+			return in.replace(matcher.group(1), "");
 		}
 	}
 	
@@ -30,7 +36,7 @@ public class LogFile {
     }
     @SneakyThrows
     public static void append(String toAppend) {
-    	toAppend = toAppend.removeLeadingNewLines();
+    	toAppend = toAppend.trimBeginning();
         String timestamp = DateTimeFormatter.ofPattern("HH:mm ").format(LocalDateTime.now());
         Files.write(TodaysURI.provide(), (System.lineSeparator() + timestamp + toAppend).getBytes(), StandardOpenOption.APPEND);
         System.out.println("Added to file '" + toAppend + "'");

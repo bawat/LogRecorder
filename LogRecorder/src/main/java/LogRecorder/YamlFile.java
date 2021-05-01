@@ -32,6 +32,9 @@ public class YamlFile {
 		}
 	}
 	
+	public static boolean logFolderIsDefaultValue(){
+		return load().logFolder.equalsIgnoreCase("None Specified");
+	}
 	
 	public void save() {
 		save(this);

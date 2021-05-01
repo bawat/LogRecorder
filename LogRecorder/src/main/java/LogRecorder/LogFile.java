@@ -11,29 +11,38 @@ import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 
 import lombok.SneakyThrows;
+import lombok.experimental.ExtensionMethod;
 
+import LogRecorder.LogFile.ExtendString;
+
+@ExtensionMethod({java.lang.String.class, ExtendString.class})
 public class LogFile {
     
+	public static class ExtendString {
+		public static String removeLeadingNewLines(String in) {
+			return in.replace("(.*?)[a-zA-Z0-9_]", "");
+		}
+	}
+	
 	@SneakyThrows
     public static String getContents() {
         return new String(Files.readAllBytes(TodaysURI.provide()));
     }
     @SneakyThrows
     public static void append(String toAppend) {
+    	toAppend = toAppend.removeLeadingNewLines();
         String timestamp = DateTimeFormatter.ofPattern("HH:mm ").format(LocalDateTime.now());
-        Files.write(TodaysURI.provide(), (timestamp + toAppend + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
+        Files.write(TodaysURI.provide(), (System.lineSeparator() + timestamp + toAppend).getBytes(), StandardOpenOption.APPEND);
         System.out.println("Added to file '" + toAppend + "'");
     }
     @SneakyThrows
     public static void overwrite(String toDump) {
-        System.out.println("Dumpeding to file...");
-    	if(!toDump.endsWith(System.lineSeparator())) toDump += System.lineSeparator();
-        Files.write(TodaysURI.provide(), toDump.getBytes(), StandardOpenOption.WRITE);
+        System.out.println("Dumping to file...");
+        Files.write(TodaysURI.provide(), toDump.getBytes(), StandardOpenOption.TRUNCATE_EXISTING);
         System.out.println("Dumped to file");
     }
     
     public static class TodaysURI{
-        private final static String logDumpFolder = "\\\\192.168.1.106\\Mark\\Wurm Employment Records\\Logs\\";
         private static String getTodaysFileName() {
         	return getFileName(LocalDateTime.now());
         }
@@ -46,11 +55,14 @@ public class LogFile {
         private static String getFolderDirectory(LocalDateTime time) {
             return DateTimeFormatter.ofPattern("yyyy\\MM-LLL\\").format(time);
         }
+        private static String getLogDumpFolder() {
+        	return YamlFile.load().logFolder + "\\";
+        }
         
         @SneakyThrows
         public static Path provide() {
-            new File(logDumpFolder + getTodaysFolderDirectory()).mkdirs();
-            File file = new File(logDumpFolder + getTodaysFolderDirectory() + getTodaysFileName());
+            new File(getLogDumpFolder() + getTodaysFolderDirectory()).mkdirs();
+            File file = new File(getLogDumpFolder() + getTodaysFolderDirectory() + getTodaysFileName());
             file.createNewFile();
             return Paths.get(file.getAbsolutePath());
         }
@@ -60,7 +72,7 @@ public class LogFile {
     private static Optional<Path> maybeProvidePreviousFilePath() {
     	for(int days = 1; days < 30 ; days++) {
     		LocalDateTime previousDate = LocalDateTime.now().minus(days, ChronoUnit.DAYS);
-    		File file = new File(TodaysURI.logDumpFolder + TodaysURI.getFolderDirectory(previousDate) + TodaysURI.getFileName(previousDate));
+    		File file = new File(TodaysURI.getLogDumpFolder() + TodaysURI.getFolderDirectory(previousDate) + TodaysURI.getFileName(previousDate));
     		if(file.exists()) return Optional.of(Paths.get(file.getAbsolutePath()));
     	}
         

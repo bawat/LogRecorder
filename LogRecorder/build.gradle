@@ -11,6 +11,12 @@ plugins {
     id 'java-library'
 }
 
+java{
+	toolchain {
+        languageVersion = JavaLanguageVersion.of(11)
+    }
+}
+
 jar{
     manifest{
         attributes 'Main-Class': 'LogRecorder.Application'

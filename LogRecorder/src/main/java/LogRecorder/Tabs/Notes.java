@@ -31,40 +31,78 @@ import lombok.SneakyThrows;
 public class Notes {
     static Thread notesTabFileListenerThread;
     static Runnable notesTabFileListenerRunnable;
+    static final String TAKING_A_BREAK = "Taking a break";
+    static final String BACK_FROM_BREAK = "Back from break";
     
     private Notes() {}
     
+    private static void toggleAFK() {
+    	LogFile.append(btnNewButton_1.getText());
+    	switch(btnNewButton_1.getText()) {
+    		case TAKING_A_BREAK:
+    			topPane.setEnabled(false);
+    			bottomPane.setEnabled(false);
+    			lblNewLabel.setEnabled(false);
+    			btnNewButton.setEnabled(false);
+    			btnNewButton_1.setText(BACK_FROM_BREAK);
+    			break;
+    		case BACK_FROM_BREAK:
+    			topPane.setEnabled(true);
+    			bottomPane.setEnabled(true);
+    			lblNewLabel.setEnabled(true);
+    			btnNewButton.setEnabled(true);
+    			btnNewButton_1.setText(TAKING_A_BREAK);
+    			break;
+    	}
+    }
+    
+    static JPanel panel_2, panel;
+    static JButton btnNewButton, btnNewButton_1;
+    static JLabel lblNewLabel;
+    static JSplitPane splitPane;
+    static FileSyncronisedPane topPane;
+    static SpellCheckedPane bottomPane;
+    
     @SneakyThrows
     public static void createTab(JTabbedPane tabbedPane) {
-    	JPanel panel_2 = new JPanel();
+    	panel_2 = new JPanel();
         tabbedPane.addTab("Notes", null, panel_2, null);
         panel_2.setLayout(new BorderLayout(0, 0));
         
-        JPanel panel = new JPanel();
+        panel = new JPanel();
         panel_2.add(panel, BorderLayout.SOUTH);
         panel.setLayout(new BorderLayout(0, 0));
         
-        JButton btnNewButton = new JButton("Submit");
+        btnNewButton = new JButton("Submit");
         btnNewButton.setHorizontalAlignment(SwingConstants.LEFT);
         panel.add(btnNewButton, BorderLayout.EAST);
         
-        JLabel lblNewLabel = new JLabel("");
+        lblNewLabel = new JLabel("");
         lblNewLabel.setFont(new Font("Tahoma", Font.PLAIN, 16));
         lblNewLabel.setHorizontalAlignment(SwingConstants.CENTER);
         panel.add(lblNewLabel, BorderLayout.CENTER);
         
-        JButton btnNewButton_1 = new JButton("Taking a break");
-        panel.add(btnNewButton_1, BorderLayout.WEST);
-        
-        JSplitPane splitPane = new JSplitPane();
+        splitPane = new JSplitPane();
         splitPane.setOrientation(JSplitPane.VERTICAL_SPLIT);
         panel_2.add(splitPane, BorderLayout.CENTER);
         splitPane.setResizeWeight(1);
         splitPane.setDividerLocation(175);
         
-        FileSyncronisedPane topPane = new FileSyncronisedPane();
+        topPane = new FileSyncronisedPane();
         JScrollPane topPaneScroll = new JScrollPane(topPane);
         splitPane.setLeftComponent(topPaneScroll);
+        
+        bottomPane = new SpellCheckedPane();
+        splitPane.setRightComponent(bottomPane);
+        
+        btnNewButton_1 = new JButton("Taking a break");
+        panel.add(btnNewButton_1, BorderLayout.WEST);
+        btnNewButton_1.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent arg0) {
+            	toggleAFK();
+            }
+        });
         
         Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
         	@Override
@@ -124,9 +162,6 @@ public class Notes {
         };
         notesTabFileListenerThread = new Thread(notesTabFileListenerRunnable);
         notesTabFileListenerThread.start();
-        
-        SpellCheckedPane bottomPane = new SpellCheckedPane();
-        splitPane.setRightComponent(bottomPane);
         
         btnNewButton.addMouseListener(new MouseAdapter() {
             @Override

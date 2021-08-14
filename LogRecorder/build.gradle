@@ -46,6 +46,10 @@ dependencies {
     implementation group: 'net.sourceforge.bpmn', name: 'yaoqiang-bpmn-editor', version: '2.2.18'
     implementation 'org.yaml:snakeyaml:1.21'
     
+    //Needed for JasperReports
+    implementation group: 'com.lowagie', name: 'itext', version: '2.1.7'
+    implementation group: 'net.sf.jasperreports', name: 'jasperreports', version: '6.17.0'
+    
     annotationProcessor 'org.projectlombok:lombok:1.18.16'
 
     // Use JUnit test framework

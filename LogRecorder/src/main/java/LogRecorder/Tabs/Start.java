@@ -59,7 +59,7 @@ public class Start {
         splitPane.setLeftComponent(topPaneScroll);
         
         Optional<String> fileContents = LogFile.maybeProvidePreviousFile();
-        topPane.setText("If you had a log for a previous day, you would see it here to review.");
+        topPane.setText("If you had a log for one of the previous 30 days, you would see it here to review.");
         if(fileContents.isPresent()) {
         	topPane.setText(fileContents.get());
         }

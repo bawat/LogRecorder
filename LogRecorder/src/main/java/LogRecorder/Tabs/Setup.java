@@ -1,38 +1,25 @@
 package LogRecorder.Tabs;
 
-import java.awt.BorderLayout;
-import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import java.awt.event.InputMethodEvent;
+import java.awt.event.InputMethodListener;
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.FileSystems;
-import java.nio.file.Path;
-import java.nio.file.StandardWatchEventKinds;
-import java.nio.file.WatchEvent;
-import java.nio.file.WatchKey;
-import java.nio.file.WatchService;
-
 import javax.swing.GroupLayout;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JList;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JSplitPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
-import javax.swing.SwingConstants;
 import javax.swing.GroupLayout.Alignment;
 import javax.swing.LayoutStyle.ComponentPlacement;
+import javax.swing.event.CaretEvent;
+import javax.swing.event.CaretListener;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 import LogRecorder.Application;
-import LogRecorder.LogFile;
-import LogRecorder.SpellCheckedPane;
 import LogRecorder.YamlFile;
 import lombok.SneakyThrows;
 
@@ -55,9 +42,31 @@ public class Setup {
         txtLogBackupLocation.setColumns(10);
         txtLogBackupLocation.setEditable(false);
         
+        JTextField txtInvoiceDestinationFolder = new JTextField(yamlFile.getInvoiceDestinationFolder());
+        txtInvoiceDestinationFolder.setColumns(10);
+        txtInvoiceDestinationFolder.setEditable(false);
+        
+        JLabel lblInvoiceDestinationEmail = new JLabel("Invoice Monthly Destination Email: ");
+        
+        JTextField txtInvoiceTemplateFile = new JTextField(yamlFile.getInvoiceTemplateFile());
+        txtInvoiceTemplateFile.setColumns(10);
+        txtInvoiceTemplateFile.setEditable(false);
+        
+        JTextField txtInvoiceDestinationEmail = new JTextField(yamlFile.getInvoiceDestinationEmail());
+        txtInvoiceDestinationEmail.addCaretListener(new CaretListener() {
+			@Override
+			public void caretUpdate(CaretEvent e) {
+				yamlFile.invoiceDestinationEmail = txtInvoiceDestinationEmail.getText();
+                yamlFile.save();
+			}
+        });
+        
         Runnable updateTextFields = () -> {
-        	txtLogLocation.setText(yamlFile.logFolder);
-        	txtLogBackupLocation.setText(yamlFile.logFolderBackup);
+        	txtLogLocation.setText(yamlFile.getLogFolder());
+        	txtLogBackupLocation.setText(yamlFile.getLogFolderBackup());
+        	txtInvoiceDestinationFolder.setText(yamlFile.getInvoiceDestinationFolder());
+        	txtInvoiceDestinationEmail.setText(yamlFile.getInvoiceDestinationEmail());
+        	txtInvoiceTemplateFile.setText(yamlFile.getInvoiceTemplateFile());
         };
         
         JButton btnLogLocation = new JButton("Choose Log Location");
@@ -85,12 +94,45 @@ public class Setup {
         btnLogBackupLocation.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+            	JFileChooser fileChooser = new JFileChooser();
+                fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+                int option = fileChooser.showOpenDialog(frame);
+                if(option == JFileChooser.APPROVE_OPTION){
+                   File file = fileChooser.getSelectedFile();
+                   yamlFile.logFolderBackup = file.getAbsolutePath();
+                   yamlFile.save();
+                   updateTextFields.run();
+                }
+            }
+         });
+        
+        JButton btnInvoiceDestination = new JButton("Choose Invoice Destination");
+        btnInvoiceDestination.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
                JFileChooser fileChooser = new JFileChooser();
                fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
                int option = fileChooser.showOpenDialog(frame);
                if(option == JFileChooser.APPROVE_OPTION){
                   File file = fileChooser.getSelectedFile();
-                  yamlFile.logFolderBackup = file.getAbsolutePath();
+                  yamlFile.invoiceDestinationFolder = file.getAbsolutePath();
+                  yamlFile.save();
+                  updateTextFields.run();
+               }
+            }
+         });
+        
+        JButton btnInvoiceTemplateFile = new JButton("Choose Invoice Template");
+        btnInvoiceTemplateFile.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+               JFileChooser fileChooser = new JFileChooser();
+               fileChooser.setFileFilter(new FileNameExtensionFilter("JasperSoft JRXML file", "jrxml"));
+               fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+               int option = fileChooser.showOpenDialog(frame);
+               if(option == JFileChooser.APPROVE_OPTION){
+                  File file = fileChooser.getSelectedFile();
+                  yamlFile.invoiceTemplateFile = file.getAbsolutePath();
                   yamlFile.save();
                   updateTextFields.run();
                }
@@ -110,7 +152,19 @@ public class Setup {
                         .addGroup(gl_panel_2.createSequentialGroup()
                             .addComponent(btnLogBackupLocation)
                             .addPreferredGap(ComponentPlacement.UNRELATED)
-                            .addComponent(txtLogBackupLocation, GroupLayout.DEFAULT_SIZE, 310, Short.MAX_VALUE)))
+                            .addComponent(txtLogBackupLocation, GroupLayout.DEFAULT_SIZE, 310, Short.MAX_VALUE))
+                        .addGroup(gl_panel_2.createSequentialGroup()
+                            .addComponent(btnInvoiceDestination)
+                            .addPreferredGap(ComponentPlacement.UNRELATED)
+                            .addComponent(txtInvoiceDestinationFolder, GroupLayout.DEFAULT_SIZE, 310, Short.MAX_VALUE))
+                        .addGroup(gl_panel_2.createSequentialGroup()
+                            .addComponent(lblInvoiceDestinationEmail)
+                            .addPreferredGap(ComponentPlacement.UNRELATED)
+                            .addComponent(txtInvoiceDestinationEmail, GroupLayout.DEFAULT_SIZE, 310, Short.MAX_VALUE))
+		                .addGroup(gl_panel_2.createSequentialGroup()
+	                        .addComponent(btnInvoiceTemplateFile)
+	                        .addPreferredGap(ComponentPlacement.UNRELATED)
+	                        .addComponent(txtInvoiceTemplateFile, GroupLayout.DEFAULT_SIZE, 310, Short.MAX_VALUE)))
                     .addContainerGap())
         );
         gl_panel_2.setVerticalGroup(
@@ -124,6 +178,19 @@ public class Setup {
                     .addGroup(gl_panel_2.createParallelGroup(Alignment.BASELINE)
                         .addComponent(btnLogBackupLocation)
                         .addComponent(txtLogBackupLocation, GroupLayout.PREFERRED_SIZE, 22, GroupLayout.PREFERRED_SIZE))
+                    .addPreferredGap(ComponentPlacement.RELATED)
+                    .addGroup(gl_panel_2.createParallelGroup(Alignment.BASELINE)
+                        .addComponent(btnInvoiceDestination)
+                        .addComponent(txtInvoiceDestinationFolder, GroupLayout.PREFERRED_SIZE, 22, GroupLayout.PREFERRED_SIZE))
+                    .addPreferredGap(ComponentPlacement.RELATED)
+                    .addGroup(gl_panel_2.createParallelGroup(Alignment.BASELINE)
+                        .addComponent(lblInvoiceDestinationEmail)
+                        .addComponent(txtInvoiceDestinationEmail, GroupLayout.PREFERRED_SIZE, 22, GroupLayout.PREFERRED_SIZE))
+                    .addPreferredGap(ComponentPlacement.RELATED)
+                    .addGroup(gl_panel_2.createParallelGroup(Alignment.BASELINE)
+                        .addComponent(btnInvoiceTemplateFile)
+                        .addComponent(txtInvoiceTemplateFile, GroupLayout.PREFERRED_SIZE, 22, GroupLayout.PREFERRED_SIZE))
+                    .addPreferredGap(ComponentPlacement.RELATED)
                     .addGap(170))
         );
         panel_2.setLayout(gl_panel_2);

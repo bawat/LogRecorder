@@ -16,9 +16,14 @@ import lombok.experimental.Accessors;
 
 @Accessors(chain = true)
 public class YamlFile {
+	private static final String UNSET_VALUE = "None Specified";
+	
 	@Getter @Setter
-	public String logFolder 		= "None Specified",
-				  logFolderBackup 	= "None Specified";
+	public String logFolder 			= UNSET_VALUE,
+				  logFolderBackup 		= UNSET_VALUE,
+				  invoiceDestinationFolder 	= UNSET_VALUE,
+				  invoiceDestinationEmail 	= UNSET_VALUE,
+				  invoiceTemplateFile 		= UNSET_VALUE;
 	
 	private static Yaml yaml = new Yaml(new Constructor(YamlFile.class));
 	private static final String FILE_NAME = "LogRecorderConfig.yml";
@@ -33,7 +38,7 @@ public class YamlFile {
 	}
 	
 	public static boolean logFolderIsDefaultValue(){
-		return load().logFolder.equalsIgnoreCase("None Specified");
+		return load().logFolder.equalsIgnoreCase(UNSET_VALUE);
 	}
 	
 	public void save() {

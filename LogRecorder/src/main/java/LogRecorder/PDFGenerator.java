@@ -46,14 +46,26 @@ public class PDFGenerator {
 	    invoiceNumber += formatter.format(number);
 	    
 	    ArrayList<InvoiceBean> beans = new ArrayList<InvoiceBean>();
-		    InvoiceBean bean = new InvoiceBean();
-		    	bean.setHoursWorked(160);
-			    bean.setInvoiceDate(date.toDay());
-			    bean.setDueDate(date.plusDays(30).toDay());
-			    bean.setInvoiceNumber(invoiceNumber);
-			    bean.setStartingDateInclusive(date.minusDays(30).toDay());
-			    bean.setEndingDateInclusive(date.minusDays(1).toDay());
-			    beans.add(bean);
+	
+	    	InvoiceBean fullHoursBean = new InvoiceBean();
+		    	fullHoursBean.setHoursWorked(160);
+		    	fullHoursBean.setInvoiceDate(date.toDay());
+		    	fullHoursBean.setDueDate(LocalDate.now().plusDays(30).toDay());
+		    	fullHoursBean.setInvoiceNumber(invoiceNumber);
+		    	fullHoursBean.setStartingDateInclusive(date.minusDays(30).toDay());
+		    	fullHoursBean.setEndingDateInclusive(date.minusDays(1).toDay());
+	    
+		    InvoiceBean halfHoursBean = new InvoiceBean();
+			    halfHoursBean.setHoursWorked(80);
+			    halfHoursBean.setInvoiceDate(date.toDay());
+			    halfHoursBean.setDueDate(LocalDate.now().plusDays(30).toDay());
+			    halfHoursBean.setInvoiceNumber(invoiceNumber);
+			    halfHoursBean.setStartingDateInclusive(date.minusDays(30).toDay());
+			    halfHoursBean.setEndingDateInclusive(date.minusDays(1).toDay());
+			    
+		    InvoiceBean bean = halfHoursBean;
+		    beans.add(bean);
+			    
 	    final JRBeanCollectionDataSource dataSource = new JRBeanCollectionDataSource(beans);
 	    
 	    try
@@ -71,7 +83,7 @@ public class PDFGenerator {
 	}
 	
 	public static void main(String[] args) {
-		File invoice = generateInvoice(LocalDate.of(2021, 07, 29));
+		File invoice = generateInvoice(LocalDate.of(2021, 10, 27));
 		try {
 			Desktop.getDesktop().open(invoice);
 		} catch (IOException e) {

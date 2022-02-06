@@ -12,6 +12,7 @@ import LogRecorder.Tabs.Notes;
 import LogRecorder.Tabs.Setup;
 import LogRecorder.Tabs.Start;
 import LogRecorder.Tabs.ToDo;
+import LogRecorder.Tabs.TimeDiff;
 
 public class Application
 {
@@ -67,6 +68,7 @@ public class Application
         Notes.createTab(tabbedPane);
         ToDo.createTab(tabbedPane);
         End.createTab(tabbedPane);
+        TimeDiff.createTab(tabbedPane);
         disableAllTabsExceptSetupUntilFolderSelected(tabbedPane);
     }
     

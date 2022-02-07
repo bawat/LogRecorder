@@ -33,6 +33,7 @@ public class TimeDiff {
     
     private final static String tabName = "Times";
     private final static JTextPane bottomText = new JTextPane();
+    private static Duration totalWorkedCalculated = Duration.ofSeconds(0);
     
     @SneakyThrows
     public static void createTab(JTabbedPane tabbedPane) {
@@ -89,7 +90,18 @@ public class TimeDiff {
 	                );
 	            }
 	        });
-	        buttonPanel.add(btnCopyButton, BorderLayout.WEST);
+	        buttonPanel.add(btnCopyButton, BorderLayout.CENTER);
+	        
+	        JButton btnAtToTotal = new JButton("Add To Total");
+	        btnAtToTotal.setHorizontalAlignment(SwingConstants.LEFT);
+	        btnAtToTotal.addMouseListener(new MouseAdapter() {
+	            @Override
+	            public void mouseClicked(MouseEvent arg0) {
+	    			totalWorkedCalculated = totalWorkedCalculated.plus(TimeInputTable.getAmmountWorkedToday());
+	    			TimeInputTable.updateTable(TimeInputTable.table);
+	            }
+	        });
+	        buttonPanel.add(btnAtToTotal, BorderLayout.WEST);
         
         JLabel lblNewLabel = new JLabel("Time difference calculator");
         lblNewLabel.setFont(new Font("Tahoma", Font.PLAIN, 16));
@@ -156,47 +168,62 @@ public class TimeDiff {
 			
 
 			StringBuilder builder = new StringBuilder();
-			Duration totalWorked = Duration.ofSeconds(0);
 			
 			for(int row = 0; row < rows.get(); row++) {
 				table.setValueAt("→", row, 1);
 				
-				totalWorked = totalWorked.plus(collectAndParseTimeFields(row, builder));
+				if(row == rows.get()-1) continue;
+				builder.append(new TimeEntry(row).toString() + System.lineSeparator());
 			}
 			
-			bottomText.setText("Time worked today: " + formatDurationAsText(totalWorked) + System.lineSeparator() +
-					builder.toString());
-		}
-	}
-	
-	private static Duration collectAndParseTimeFields(int row, StringBuilder builder) {
-		String
-			time1 = (String)TimeInputTable.table.getValueAt(row, 0),
-			time2 = (String)TimeInputTable.table.getValueAt(row, 2);
-		
-		LocalTime start, end;
-		try {
-			start = LocalTime.parse(time1);
-			end = LocalTime.parse(time2);
-		} catch (DateTimeParseException e) {
-			if(row >= TimeInputTable.table.getRowCount()-1) return Duration.ofSeconds(0);
+			Duration totalWorkedToday = getAmmountWorkedToday();
 			
-			builder.append("??? -> ???");
-			builder.append(System.lineSeparator());
-			return Duration.ofSeconds(0);
+			final String
+				timeWorkedTotal = "Time worked for these 30 days   : " + formatDurationAsText(totalWorkedCalculated) + System.lineSeparator(),
+				timeWorkedRemaining = "Time remaining for these 30 days: " + formatDurationAsText(Duration.ofHours(160).minus(totalWorkedCalculated)) + System.lineSeparator(),
+				timeWorkedToday = "Time worked today: " + formatDurationAsText(totalWorkedToday) + System.lineSeparator();
+			
+			bottomText.setText(timeWorkedTotal + timeWorkedRemaining + timeWorkedToday + builder.toString());
 		}
 		
-		Duration diff = Duration.between(start, end);
-		
-		if (start.isAfter(end))// 24 - duration between end and start, note how end and start switched places
-			diff = Duration.ofHours(24).minus(Duration.between(end, start));
-		
-		builder.append(time1 + " -> " + time2 + " is " + formatDurationAsText(diff));
-		builder.append(System.lineSeparator());
-		
-		return diff;
+		static Duration getAmmountWorkedToday() {
+			Duration totalWorkedToday = Duration.ofSeconds(0);
+
+			for(int row = 0; row < table.getRowCount(); row++)
+				totalWorkedToday = totalWorkedToday.plus(new TimeEntry(row).dur);
+			
+			return totalWorkedToday;
+		}
 	}
 	private static String formatDurationAsText(Duration dur) {
 		return String.format("%dh %02dm", dur.toHours(), dur.toMinutesPart());
+	}
+	
+	static class TimeEntry{
+		LocalTime start = null, end = null;
+		Duration dur = Duration.ofSeconds(0);
+		String toString = "??? -> ???";
+		TimeEntry(int row){
+			String
+			time1 = (String)TimeInputTable.table.getValueAt(row, 0),
+			time2 = (String)TimeInputTable.table.getValueAt(row, 2);
+		
+			try {
+				start = LocalTime.parse(time1);
+				end = LocalTime.parse(time2);
+				
+				dur = Duration.between(start, end);
+				if (start.isAfter(end))// 24 - duration between end and start, note how end and start switched places
+					dur = Duration.ofHours(24).minus(Duration.between(end, start));
+				
+				toString = time1 + " -> " + time2 + " is " + formatDurationAsText(dur);
+			} catch (DateTimeParseException e) {
+			}
+		}
+		
+		@Override
+		public String toString() {
+			return toString;
+		}
 	}
 }

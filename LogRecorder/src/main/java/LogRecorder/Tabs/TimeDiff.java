@@ -195,7 +195,7 @@ public class TimeDiff {
 			return totalWorkedToday;
 		}
 	}
-	private static String formatDurationAsText(Duration dur) {
+	public static String formatDurationAsText(Duration dur) {
 		return String.format("%dh %02dm", dur.toHours(), dur.toMinutesPart());
 	}
 	

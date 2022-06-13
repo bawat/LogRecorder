@@ -8,6 +8,7 @@ import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -90,5 +91,10 @@ public class LogFile {
     	if(path.isPresent()) return Optional.of(new String(Files.readAllBytes(path.get())));
         
         return Optional.empty();
+    }
+    
+    class Parser{
+    	ArrayList<String> toDo = new ArrayList<String>();
+    	
     }
 }

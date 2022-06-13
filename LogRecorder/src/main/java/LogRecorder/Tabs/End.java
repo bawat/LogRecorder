@@ -110,6 +110,12 @@ public class End {
 		int toMinutes(){
 			return hour * 60 + min;
 		}
+		float toHours(){
+			return hour + min/60f;
+		}
+		float toDays(){
+			return toHours()/24f;
+		}
 		
 		TimeDiff diffTo(Time end){
 			SimpleDateFormat format = new SimpleDateFormat("HH:mm");

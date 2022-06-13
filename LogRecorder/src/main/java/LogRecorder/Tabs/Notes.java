@@ -11,21 +11,31 @@ import java.nio.file.StandardWatchEventKinds;
 import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.swing.JButton;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTabbedPane;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import javax.swing.text.JTextComponent;
 
 import LogRecorder.Application;
 import LogRecorder.FileSyncronisedPane;
 import LogRecorder.LogFile;
 import LogRecorder.SpellCheckedPane;
+import LogRecorder.Tabs.End.Time;
+import LogRecorder.idleDetectionHandler.IdleTimeDetector;
 import lombok.SneakyThrows;
 
 public class Notes {
@@ -37,23 +47,32 @@ public class Notes {
     private Notes() {}
     
     private static void toggleAFK() {
-    	LogFile.append(btnNewButton_1.getText());
     	switch(btnNewButton_1.getText()) {
     		case TAKING_A_BREAK:
-    			topPane.setEnabled(false);
-    			bottomPane.setEnabled(false);
-    			lblNewLabel.setEnabled(false);
-    			btnNewButton.setEnabled(false);
-    			btnNewButton_1.setText(BACK_FROM_BREAK);
+    			setAFK();
+    			AutoAFKHandler.manualAFK = true;
     			break;
     		case BACK_FROM_BREAK:
-    			topPane.setEnabled(true);
-    			bottomPane.setEnabled(true);
-    			lblNewLabel.setEnabled(true);
-    			btnNewButton.setEnabled(true);
-    			btnNewButton_1.setText(TAKING_A_BREAK);
+    			setUNAFK();
+    			AutoAFKHandler.manualAFK = false;
     			break;
     	}
+    }
+    private static void setAFK() {
+    	LogFile.append(btnNewButton_1.getText());
+		topPane.setEnabled(false);
+		bottomPane.setEnabled(false);
+		lblNewLabel.setEnabled(false);
+		btnNewButton.setEnabled(false);
+		btnNewButton_1.setText(BACK_FROM_BREAK);
+    }
+    private static void setUNAFK() {
+    	LogFile.append(btnNewButton_1.getText());
+		topPane.setEnabled(true);
+		bottomPane.setEnabled(true);
+		lblNewLabel.setEnabled(true);
+		btnNewButton.setEnabled(true);
+		btnNewButton_1.setText(TAKING_A_BREAK);
     }
     
     static JPanel panel_2, panel;
@@ -90,7 +109,56 @@ public class Notes {
         
         topPane = new FileSyncronisedPane();
         JScrollPane topPaneScroll = new JScrollPane(topPane);
-        splitPane.setLeftComponent(topPaneScroll);
+        
+        JPanel afkLogPanel = new JPanel();
+        afkLogPanel.setLayout(new BorderLayout(0, 0));
+        JList<Notes.AutoAFKHandler.TimeDiff> afkLog = new JList<>();
+        afkLogPanel.add(new JLabel("AFK Records"), BorderLayout.NORTH);
+        afkLogPanel.add(afkLog, BorderLayout.CENTER);
+        JPanel temp = new JPanel();
+        temp.setLayout(new BorderLayout(0, 0));
+        temp.add(new JButton("Merge record down"), BorderLayout.NORTH);
+        JButton moveToLogButton = new JButton("Move record to log");
+        temp.add(moveToLogButton, BorderLayout.SOUTH);
+        moveToLogButton.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent arg0) {
+            	if(afkLog.getSelectedValue() == null) return;
+            	String startTimeString = DateTimeFormatter.ofPattern("HH:mm").format(afkLog.getSelectedValue().startTime);
+            	String strBreak = startTimeString + " " + TAKING_A_BREAK;
+            	String strBack = DateTimeFormatter.ofPattern("HH:mm").format(afkLog.getSelectedValue().endTime) + " " + BACK_FROM_BREAK;
+            	if(LogFile.getContents().contains(strBreak) || LogFile.getContents().contains(strBack)) return;
+            	
+            	Pattern pattern = Pattern.compile("[0-9]{2}:[0-9]{2}", Pattern.CASE_INSENSITIVE);
+            	String reconstructedFile = "";
+            	Matcher matcher;
+            	boolean insertedNewLines = false;
+            	for(String line : LogFile.getContents().split(System.lineSeparator())){
+            		
+            		matcher = pattern.matcher(line);
+        			if(matcher.find()) {
+        				String time = matcher.group();
+        				End.Time thisLineTime = new End.Time(time);
+        				End.Time newLogTime = new End.Time(startTimeString);
+        				if(thisLineTime.diffTo(newLogTime).toHours() > 12f  && !insertedNewLines) {
+        					reconstructedFile += System.lineSeparator() + strBreak;
+        					reconstructedFile += System.lineSeparator() + strBack;
+        					insertedNewLines = true;
+        				}
+        			}
+            		reconstructedFile += System.lineSeparator() + line;
+            	}
+            	LogFile.overwrite(reconstructedFile);
+            }
+        });
+        afkLogPanel.add(temp, BorderLayout.SOUTH);
+        
+        JPanel topSplitPane = new JPanel();
+        topSplitPane.setLayout(new BorderLayout(0, 0));
+        topSplitPane.add(topPaneScroll, BorderLayout.CENTER);
+        topSplitPane.add(afkLogPanel, BorderLayout.EAST);
+        
+        splitPane.setLeftComponent(topSplitPane);
         
         bottomPane = new SpellCheckedPane();
         splitPane.setRightComponent(bottomPane);
@@ -111,6 +179,7 @@ public class Notes {
         	}
         }));
         
+        AutoAFKHandler.initAFKListener(afkLog);
         
         topPane.setText(LogFile.getContents());
         
@@ -170,5 +239,45 @@ public class Notes {
             	Application.submitTextboxIntoLogFile(bottomPane);
             }
         });
+    }
+    
+    static class AutoAFKHandler{
+    	static LocalDateTime lastAutoAFKTime;
+    	static ArrayList<TimeDiff> afkTimes = new ArrayList<TimeDiff>();
+        static boolean manualAFK = false;
+        static boolean currentlyAutoAFK = false;
+        static boolean wasAutoAFK = false;
+        private static final long idleTimeAllowanceMS = 60000l;
+		public static void initAFKListener(JList<TimeDiff> listElement) {
+			new Timer(1000, e -> {
+	        	currentlyAutoAFK = IdleTimeDetector.getIdleTimeMS() > idleTimeAllowanceMS;
+	        	
+	        	if(!wasAutoAFK && currentlyAutoAFK)
+	        		lastAutoAFKTime = LocalDateTime.now().minusNanos(idleTimeAllowanceMS * (long)Math.pow(10, 6));
+	        		
+	        	if(!currentlyAutoAFK && wasAutoAFK) {
+	        		afkTimes.add(new TimeDiff(lastAutoAFKTime, LocalDateTime.now()));
+	        		listElement.setListData(afkTimes.toArray(new TimeDiff[0]));
+	        	}
+	        	
+	        	wasAutoAFK = currentlyAutoAFK;
+	    	}).start(); 
+		}
+    	
+		static class TimeDiff{
+			LocalDateTime startTime;
+			LocalDateTime endTime;
+			TimeDiff(LocalDateTime startTime, LocalDateTime endTime){
+				this.startTime = startTime;
+				this.endTime = endTime;
+			}
+			
+			public String toString() {
+				return DateTimeFormatter.ofPattern("HH:mm").format(startTime) +" - "+ LogRecorder.Tabs.TimeDiff.formatDurationAsText(Duration.between(startTime, endTime));
+			}
+			public String getTimeDiff() {
+				return DateTimeFormatter.ofPattern("HH:mm").format(startTime) +" -> "+ DateTimeFormatter.ofPattern("HH:mm").format(endTime);
+			}
+		}
     }
 }
